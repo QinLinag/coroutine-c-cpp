@@ -1,0 +1,3 @@
+/home/qinliang/myCppWorkPlace/coroutine/build/CMakeFiles/rebuild_cache.dir
+/home/qinliang/myCppWorkPlace/coroutine/build/CMakeFiles/edit_cache.dir
+/home/qinliang/myCppWorkPlace/coroutine/build/CMakeFiles/Coroutine.dir

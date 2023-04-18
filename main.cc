@@ -1,4 +1,5 @@
 #include "coroutine.h"
+#include <iostream>
 #include <stdio.h>
 
 
@@ -21,16 +22,17 @@ static void test(struct schedule* S) {
 
     int co1 = coroutine_new(S, foo, &arg1);
     int co2 = coroutine_new(S, foo, &arg2);
-    printf("main start\n");
+    std::cout << "main start" << std::endl;
     while(coroutine_status(S, co1) 
                     && coroutine_status(S,co2)) {
+        std::cout << "main during" << std::endl;
         coroutine_resume(S, co1);
         coroutine_resume(S, co2);
     }
-    printf("main end\n");
+    std::cout << "main end" << std::endl;
 }
 
-int main(int argc, char** argv) {
+int main() {
     struct schedule* S = coroutine_open();
     test(S);
     coroutine_close(S);

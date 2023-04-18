@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdint.h>
+#include <iostream>
 
 #if __APPLE__ & __MACH__
         #include <sys/ucontext.h>
@@ -46,10 +47,11 @@ struct coroutine* _co_new(struct schedule* S,
     co->cap = 0;
     co->size = 0;
     co->status  = COROUTINE_READY;
-    co->stack = NULL;
+    co->stack = nullptr;
+    return co;
 }
 
-void _co_delete(struct coroutine* co) {
+static void _co_delete(struct coroutine* co) {
     if(co) {
         if(co->stack) {
             free(co->stack);
@@ -61,14 +63,12 @@ void _co_delete(struct coroutine* co) {
 }
 
 
-struct schedule* coroutine_open(void) {
+struct schedule* coroutine_open() {
     struct schedule* S = (struct schedule*)malloc(sizeof(struct schedule));
     S->nco = 0;
     S->cap = DEFAULT_COROUTINE;
     S->running = -1;
-    void* temp = malloc(sizeof(struct coroutine) * S->cap);
-    void** temp2 = &temp;
-    S->co = (struct coroutine**)temp2;
+    S->co = (struct coroutine**)malloc(sizeof(struct coroutine) * S->cap);
     memset(S->co, 0, sizeof(struct coroutine*) * S->cap);
     return S;
 }
@@ -91,9 +91,7 @@ int coroutine_new(struct schedule* S,
     struct coroutine* co = _co_new(S, func, ud);
     if(S->nco >= S->cap) {
         int id = S->cap;
-        void* temp = realloc(S->co, S->cap * 2 * sizeof(struct coroutine));
-        void** temp2 = &temp;
-        S->co = (struct coroutine**)temp2;
+        S->co = (struct coroutine**)realloc(S->co, S->cap * 2 * sizeof(struct coroutine));
         S->co[S->cap] = co;
         S->cap *= 2;
         ++S->nco;
@@ -127,8 +125,9 @@ static void mainfunc(uint32_t low32, uint32_t hi32) {
 
 
 void coroutine_resume(struct schedule* S, int id) {
+    std::cout << "coroutine_resume 1" << std::endl;
     assert(S->running == -1);
-    assert(id > 0 && id < S->cap);
+    assert(id >= 0 && id < S->cap);
     struct coroutine* C = S->co[id];
     if(C == nullptr) {
         return;
@@ -145,7 +144,7 @@ void coroutine_resume(struct schedule* S, int id) {
                 C->status = COROUTINE_RUNNING;
                 uintptr_t ptr = (uintptr_t)S;
                 makecontext(&C->ctx, (void(*)(void))mainfunc, 2, (uint32_t)ptr, (uint32_t)(ptr >> 32));
-                swapcontext(&S->main, &C->ctx);
+                swapcontext(&S->main, &C->ctx); //将当前上下文信息保存到S->main中， 然后恢复C->ctx上下文信息，
                 break;
             }
         case COROUTINE_SUSPEND:
@@ -194,5 +193,5 @@ void coroutine_yield(struct schedule* S) {
     _save_stack(C, S->stack + STACK_SIZE);
     C->status = COROUTINE_SUSPEND;
     S->running = -1;
-    swapcontext(&C->ctx, &S->main);
+    swapcontext(&C->ctx, &S->main);  //将当前上下文信息保存到C->ctx ，然后恢复S->main上下文信息，
 }

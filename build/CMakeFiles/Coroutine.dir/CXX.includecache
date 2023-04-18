@@ -1,0 +1,40 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/qinliang/myCppWorkPlace/coroutine/coroutine.cc
+coroutine.h
+/home/qinliang/myCppWorkPlace/coroutine/coroutine.h
+stdio.h
+-
+stdlib.h
+-
+assert.h
+-
+stddef.h
+-
+string.h
+-
+stdint.h
+-
+iostream
+-
+sys/ucontext.h
+-
+ucontext.h
+-
+
+/home/qinliang/myCppWorkPlace/coroutine/coroutine.h
+
+/home/qinliang/myCppWorkPlace/coroutine/main.cc
+coroutine.h
+/home/qinliang/myCppWorkPlace/coroutine/coroutine.h
+iostream
+-
+stdio.h
+-
+
