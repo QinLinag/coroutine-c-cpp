@@ -112,9 +112,87 @@ int coroutine_new(struct schedule* S,
     return -1;
 }
 
-void coroutine_resume(struct schedule*, int id);
+static void mainfunc(uint32_t low32, uint32_t hi32) {
+    uintptr_t ptr = (uintptr_t)low32 | ((uintptr_t)hi32 << 32);
+    struct schedule* S = (struct schedule*)ptr;
+    int id = S->running;
+    struct coroutine* C = S->co[id];
+    C->func(S, C->ud);
+    _co_delete(C);
+    S->co[id] = nullptr;
+    --S->nco;
+    S->running = -1;
+}
 
-int coroutine_status(struct schedule*, int id);
 
-int coroutine_running(struct schedule*);
-void coroutine_yield(struct schedule*);
+
+void coroutine_resume(struct schedule* S, int id) {
+    assert(S->running == -1);
+    assert(id > 0 && id < S->cap);
+    struct coroutine* C = S->co[id];
+    if(C == nullptr) {
+        return;
+    }
+    int status = C->status;
+    switch(status) {
+        case COROUTINE_READY:
+            {
+                getcontext(&C->ctx);
+                C->ctx.uc_stack.ss_sp = S->stack;
+                C->ctx.uc_stack.ss_size = STACK_SIZE;
+                C->ctx.uc_link = &S->main;
+                S->running = id;
+                C->status = COROUTINE_RUNNING;
+                uintptr_t ptr = (uintptr_t)S;
+                makecontext(&C->ctx, (void(*)(void))mainfunc, 2, (uint32_t)ptr, (uint32_t)(ptr >> 32));
+                swapcontext(&S->main, &C->ctx);
+                break;
+            }
+        case COROUTINE_SUSPEND:
+            {
+                memcpy(S->stack + STACK_SIZE - C->size, C->stack, C->size);
+                S->running = id;
+                C->status = COROUTINE_RUNNING;
+                swapcontext(&S->main, &C->ctx);
+                break;
+            }
+        default:
+            assert(0);
+    }
+
+}
+
+static void _save_stack(struct coroutine* C, char* top) {
+    char dummy = 0;
+    assert(top - &dummy <= STACK_SIZE);
+    if(C->cap < top - &dummy) {
+        free(C->stack);
+        C->cap = top - &dummy;
+        C->stack = (char*)malloc(C->cap);
+    }
+    C->size = top - &dummy;
+    memcpy(C->stack, &dummy, C->size);
+}
+
+int coroutine_status(struct schedule* S, int id) {
+    assert(id >= 0 && id < S->cap);
+    if(S->co[id] == nullptr) {
+        return COROUTINE_DEAD;
+    }
+    return S->co[id]->status;
+}
+
+int coroutine_running(struct schedule* S) {
+    return S->running;
+}
+
+void coroutine_yield(struct schedule* S) {
+    int id = S->running;
+    assert(id >= 0);
+    struct coroutine* C = S->co[id];
+    assert((char*)&C > S->stack);
+    _save_stack(C, S->stack + STACK_SIZE);
+    C->status = COROUTINE_SUSPEND;
+    S->running = -1;
+    swapcontext(&C->ctx, &S->main);
+}
