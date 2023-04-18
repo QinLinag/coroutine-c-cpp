@@ -1,11 +1,5 @@
 #include "coroutine.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
-#include <stddef.h>
-#include <string.h>
-#include <stdint.h>
-#include <iostream>
+
 
 #if __APPLE__ & __MACH__
         #include <sys/ucontext.h>
@@ -13,8 +7,7 @@
         #include <ucontext.h>
 #endif
 
-#define STACK_SIZE (1024 * 1024)
-#define DEFAULT_COROUTINE 16
+
 
 struct coroutine;
 
